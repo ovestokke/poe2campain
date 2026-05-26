@@ -1,6 +1,8 @@
 # poecampain
 
-Terminal based campaign guide for Path of Exile.
+Terminal based campaign guide for Path of Exile 2.
+
+Fork of https://github.com/wiiittttt/poecampain
 
 <p>
     <img src="img/poecampain.gif" alt="poecampain showcase">
