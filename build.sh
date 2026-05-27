@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-APP=poecampain
+APP=poe2campain
 
 case "$OSTYPE" in
     msys*|cygwin*)
@@ -8,6 +8,6 @@ case "$OSTYPE" in
         ;;
 esac
 
-go build -ldflags='-s -w' -o dist/$APP src/*.go
+go build -ldflags='-s -w' -o dist/$APP ./cmd/poe2campain
 
 cp -r data dist/

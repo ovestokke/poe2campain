@@ -1,0 +1,30 @@
+{
+  "sources": [
+    {
+      "name": "domistae/poe2-leveling",
+      "repo": "https://github.com/domistae/poe2-leveling",
+      "commit": "743f0934c246253801a8463c398322952025ab41",
+      "license": "MIT",
+      "role": "primary",
+      "files": [
+        "domistae/poe2_act1_guide.html",
+        "domistae/poe2_act2_guide.html",
+        "domistae/poe2_act3_guide.html",
+        "domistae/poe2_act4_guide.html",
+        "domistae/poe2_interludes_guide.html",
+        "domistae/LICENSE"
+      ]
+    },
+    {
+      "name": "Lailloken/Exile-UI",
+      "repo": "https://github.com/Lailloken/Exile-UI",
+      "commit": "5f3185dd58672baa2859f7357c0704afc18ee7af",
+      "license": "MIT",
+      "role": "area_ids",
+      "files": [
+        "exile-ui/areas_2.json",
+        "exile-ui/LICENSE.md"
+      ]
+    }
+  ]
+}

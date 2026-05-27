@@ -1,56 +1,133 @@
-# poecampain
+# poe2campain
 
-Terminal based campaign guide for Path of Exile 2.
+Terminal-only Path of Exile 2 campaign helper.
 
-Fork of https://github.com/wiiittttt/poecampain
+Status: in development. The repo has been cleaned of the original upstream app assets/data and now keeps only the new PoE2 source snapshots and implementation plan.
 
-<p>
-    <img src="img/poecampain.gif" alt="poecampain showcase">
-</p>
+## Scope
 
-## Features
-* Move to the next step automatically when entering a new zone.
-* Remember progress when exiting.
+`poe2campain` will:
 
-### Notes
-* A [Nerd Font](https://www.nerdfonts.com) is required to render all text.
-* This guide was made for my own use. There may be important information, directions, or optional content not included. Feel free to modify the guide for your own purpose.
-* Mainly tested on Linux, but should work on all platforms.
-* No other features planned at this time. (ex. POB import for gems)
+- read only Path of Exile 2 `Client.txt`
+- detect generated area IDs from verified PoE2 log lines
+- match those IDs to normalized campaign data
+- render campaign route/step guidance in a terminal UI
+- support manual route/step navigation when automatic matching is wrong
+- work offline at runtime from `data/campaign.normalized.json`
 
-## Config
-### ~/.config/poecampain/config.yaml
-`client: /path/to/Path of Exile/logs/Client.txt`
+It will not use overlays, memory reading, process hooks, input automation, Electron, AHK, or game integration beyond reading `Client.txt`.
 
-#### Default Path
-* Linux: `~/.steam/steam/steamapps/common/Path of Exile/logs/Client.txt`
-* Windows: `C:\Program Files (x86)\Steam\steamapps\common\Path of Exile\logs\Client.txt`
-* Mac: `~/Library/Application Support/Steam/steamapps/common/Path of Exile/logs/Client.txt`
+## Source data
 
-The Client.txt file is used to read the current zone information.
+Current source snapshots live under `data/sources/`.
 
-## Keybinds
-Manual navigation: `↑` `↓` `←` `→`
+Primary MIT source:
 
-Quit: `q` or `ctrl+c`
+- `Lailloken/Exile-UI`
+- commit `5f3185dd58672baa2859f7357c0704afc18ee7af`
+- files copied under `data/sources/exile-ui/`
 
-Reset: `r` (same as `↑`)
+Optional MIT enrichment source:
 
-## Screenshot
-This is how I use the guide pinned on top of the game. Each step has a maximum of 5 lines.
+- `domistae/poe2-leveling`
+- commit `743f0934c246253801a8463c398322952025ab41`
+- files copied under `data/sources/domistae/`
 
-<p>
-    <img src="img/example.png" width="1000" alt="Show poecampaign pinned on top of the game">
-</p>
+See `data/sources/README.md` and `data/sources/sources.json`.
 
-* Terminal: Ghostty
-* Font: JetBrainsMono Nerd Font
-* Size: 14
-* Theme: Catppuccin Mocha
+## Build
 
-For Hyprland: `windowrule = float on, pin on, size 620 140, opacity 0.7, match:title poecampain`
+```sh
+go test ./...
+go build ./cmd/poe2campain
+```
 
-## Shout-out
-Thanks to [Exile-UI](https://github.com/Lailloken/Exile-UI) and [Exile Leveling](https://heartofphos.github.io/exile-leveling/#/).
+Or:
 
-This guide uses information taken from both leveling guides.
+```sh
+./build.sh
+```
+
+## Current CLI
+
+Regenerate the normalized offline runtime data:
+
+```sh
+go run ./cmd/poe2campain update-data
+```
+
+Validate the normalized data:
+
+```sh
+go run ./cmd/poe2campain validate-data
+```
+
+List known zone IDs:
+
+```sh
+go run ./cmd/poe2campain --list-zones
+```
+
+Inspect guide state for a generated area ID or zone:
+
+```sh
+go run ./cmd/poe2campain --debug-zone G1_13_2
+```
+
+Configure your `Client.txt` path:
+
+```sh
+go run ./cmd/poe2campain config set-client '/path/to/Path of Exile 2/logs/Client.txt'
+go run ./cmd/poe2campain config show
+```
+
+The default config path is:
+
+```sh
+go run ./cmd/poe2campain config path
+```
+
+A template is available at `config.example.json`. A local `config.json` is gitignored if you want to use `--config config.json` during development.
+
+The user config intentionally only stores user-specific settings like `client_txt`. The bundled campaign data is found automatically from the working directory during development or next to the executable in release builds. `--data` remains available as a developer override.
+
+Scan `Client.txt` once and show the latest detected area:
+
+```sh
+go run ./cmd/poe2campain --debug-client
+```
+
+Run the live terminal UI:
+
+```sh
+go run ./cmd/poe2campain
+```
+
+Live mode watches `Client.txt` and follows the ordered route from `data/campaign.normalized.json`. Area detection can move the guide forward to the next matching route entry, but it does not rewind automatically. It saves the current route/step under your user state directory.
+
+Progress state commands:
+
+```sh
+go run ./cmd/poe2campain state path
+go run ./cmd/poe2campain state show
+go run ./cmd/poe2campain state reset
+```
+
+```text
+↑/k  step up       ←  zone back
+↓/j  step down      →  zone forward
+h    toggle help
+q    quit
+```
+
+You can still override the config from the command line:
+
+```sh
+go run ./cmd/poe2campain --debug-client --client '/path/to/Path of Exile 2/logs/Client.txt'
+```
+
+Act 4 follows the imported route order like the rest of the campaign.
+
+## Implementation plan
+
+See `plan.md`.
