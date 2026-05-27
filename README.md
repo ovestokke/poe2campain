@@ -25,17 +25,17 @@ It will not use overlays, memory reading, process hooks, input automation, Elect
 
 Current source snapshots live under `data/sources/`.
 
-Primary MIT source:
-
-- `Lailloken/Exile-UI`
-- commit `5f3185dd58672baa2859f7357c0704afc18ee7af`
-- files copied under `data/sources/exile-ui/`
-
-Optional MIT enrichment source:
+Primary source — campaign guide text:
 
 - `domistae/poe2-leveling`
 - commit `743f0934c246253801a8463c398322952025ab41`
 - files copied under `data/sources/domistae/`
+
+Area ID source — Client.txt zone matching:
+
+- `Lailloken/Exile-UI`
+- commit `5f3185dd58672baa2859f7357c0704afc18ee7af`
+- files copied under `data/sources/exile-ui/`
 
 See `data/sources/README.md` and `data/sources/sources.json`.
 
