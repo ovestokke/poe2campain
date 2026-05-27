@@ -2,8 +2,6 @@
 
 Terminal-only Path of Exile 2 campaign helper.
 
-Status: in development. The repo has been cleaned of the original upstream app assets/data and now keeps only the new PoE2 source snapshots and implementation plan.
-
 ## Scope
 
 `poe2campain` will:
@@ -16,6 +14,12 @@ Status: in development. The repo has been cleaned of the original upstream app a
 - work offline at runtime from `data/campaign.normalized.json`
 
 It will not use overlays, memory reading, process hooks, input automation, Electron, AHK, or game integration beyond reading `Client.txt`.
+
+## Requirements
+
+- **Go 1.25+** (see `go.mod`)
+- **A [Nerd Font](https://www.nerdfonts.com)** installed and active in your terminal (used for direction arrows and step icons)
+- **Path of Exile 2** `Client.txt` log file accessible on disk
 
 ## Source data
 
@@ -42,11 +46,47 @@ go test ./...
 go build ./cmd/poe2campain
 ```
 
-Or:
+Or use the helper script (outputs to `dist/`):
 
 ```sh
 ./build.sh
 ```
+
+### Running on each platform
+
+Build produces a single static binary. Place it alongside the `data/` directory.
+
+**Linux:**
+
+```sh
+go build -ldflags='-s -w' -trimpath -o poe2campain ./cmd/poe2campain
+./poe2campain config set-client ~/.steam/steam/steamapps/common/'Path of Exile 2'/logs/Client.txt
+./poe2campain
+```
+
+**macOS:**
+
+```sh
+go build -ldflags='-s -w' -trimpath -o poe2campain ./cmd/poe2campain
+./poe2campain config set-client ~/Library/Application\ Support/Steam/steamapps/common/'Path of Exile 2'/logs/Client.txt
+./poe2campain
+```
+
+**Windows (PowerShell):**
+
+```powershell
+go build -ldflags='-s -w' -trimpath -o poe2campain.exe ./cmd/poe2campain
+.\poe2campain config set-client 'C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt'
+.\poe2campain
+```
+
+Default `Client.txt` paths per OS:
+
+| OS      | Default path                                                                                          |
+|---------|-------------------------------------------------------------------------------------------------------|
+| Linux   | `~/.steam/steam/steamapps/common/Path of Exile 2/logs/Client.txt`                                   |
+| macOS   | `~/Library/Application Support/Steam/steamapps/common/Path of Exile 2/logs/Client.txt`               |
+| Windows | `C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt` |
 
 ## Current CLI
 
@@ -87,7 +127,7 @@ The default config path is:
 go run ./cmd/poe2campain config path
 ```
 
-A template is available at `config.example.json`. A local `config.json` is gitignored if you want to use `--config config.json` during development.
+A local `config.json` is gitignored if you want to use `--config config.json` during development.
 
 The user config intentionally only stores user-specific settings like `client_txt`. The bundled campaign data is found automatically from the working directory during development or next to the executable in release builds. `--data` remains available as a developer override.
 
@@ -128,6 +168,38 @@ go run ./cmd/poe2campain --debug-client --client '/path/to/Path of Exile 2/logs/
 
 Act 4 follows the imported route order like the rest of the campaign.
 
-## Implementation plan
+## Window manager rules
 
-See `plan.md`.
+Pin poe2campain as a small floating overlay alongside the game.
+
+### Niri (Wayland)
+
+```kdl
+window-rule {
+    match app-id="com.mitchellh.ghostty" title="poe2campain"
+    open-floating true
+    default-floating-position x=2240 y=1100
+    default-column-width { fixed 620; }
+    default-window-height { fixed 120; }
+    opacity 0.7
+}
+```
+
+Adjust `x`, `y`, width, and height for your monitor. Replace `com.mitchellh.ghostty` with your terminal's app-id if you don't use Ghostty.
+
+### Hyprland (Wayland)
+
+```ini
+windowrulev2 = float, class:^(ghostty)$, title:^(poe2campain)$
+windowrulev2 = pin, class:^(ghostty)$, title:^(poe2campain)$
+windowrulev2 = size 620 140, class:^(ghostty)$, title:^(poe2campain)$
+windowrulev2 = opacity 0.7, class:^(ghostty)$, title:^(poe2campain)$
+```
+
+Replace `ghostty` with your terminal's class if different (`wezterm`, `Alacritty`, etc.).
+
+## Credits
+
+- [Lailloken/Exile-UI](https://github.com/Lailloken/Exile-UI) — area IDs and zone names (MIT)
+- [domistae/poe2-leveling](https://github.com/domistae/poe2-leveling) — campaign guide text (MIT)
+- Original fork: [wiiittttt/poecampain](https://github.com/wiiittttt/poecampain)
