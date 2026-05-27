@@ -58,8 +58,6 @@ For the UI to render properly, use:
   - **Konsole**
 - a **[Nerd Font](https://www.nerdfonts.com)** enabled in that terminal
 
-SSH is fine too — what matters is the terminal on the **client machine**.
-
 ---
 
 ## Quick start
