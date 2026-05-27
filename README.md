@@ -1,157 +1,113 @@
 # poe2campain
 
-Terminal-only Path of Exile 2 campaign helper.
+A fast terminal campaign helper for **Path of Exile 2**.
 
-## Scope
+`poe2campain` watches `Client.txt`, matches your current area, and keeps your leveling route in sync while you push toward maps.
 
-`poe2campain` will:
+No overlay. No memory reading. No automation. Just a clean terminal guide that stays out of the way.
 
-- read only Path of Exile 2 `Client.txt`
-- detect generated area IDs from verified PoE2 log lines
-- match those IDs to normalized campaign data
-- render campaign route/step guidance in a terminal UI
-- support manual route/step navigation when automatic matching is wrong
-- work offline at runtime from `data/campaign.normalized.json`
+---
 
-It will not use overlays, memory reading, process hooks, input automation, Electron, AHK, or game integration beyond reading `Client.txt`.
+## Why this exists
 
-## Requirements
+Most PoE helpers either try to live on top of the game or depend on heavier integrations.
 
-- **Go 1.25+** (see `go.mod`)
-- **A [Nerd Font](https://www.nerdfonts.com)** installed and active in your terminal (used for direction arrows and step icons)
-- **Path of Exile 2** `Client.txt` log file accessible on disk
+`poe2campain` is intentionally simple:
 
-## Source data
+- follows your campaign route from `Client.txt`
+- works offline from bundled campaign data
+- lets you move manually when auto-detection is wrong
+- keeps your progress between sessions
+- fits nicely in a small floating terminal window
 
-Current source snapshots live under `data/sources/`.
+---
 
-Primary source — campaign guide text:
+## Install
 
-- `domistae/poe2-leveling`
-- commit `743f0934c246253801a8463c398322952025ab41`
-- files copied under `data/sources/domistae/`
+### Download a release
 
-Area ID source — Client.txt zone matching:
+Grab the latest release for your platform from **GitHub Releases**.
 
-- `Lailloken/Exile-UI`
-- commit `5f3185dd58672baa2859f7357c0704afc18ee7af`
-- files copied under `data/sources/exile-ui/`
+Each release archive already includes:
 
-See `data/sources/README.md` and `data/sources/sources.json`.
+- the `poe2campain` binary
+- the bundled `data/` directory
 
-## Build
+**You do not need Go installed to run release builds.**
 
+### Supported release targets
+
+- Linux `amd64`, `arm64`
+- macOS `amd64`, `arm64`
+- Windows `amd64`, `arm64`
+
+---
+
+## Terminal requirements
+
+For the UI to render properly, use:
+
+- a **modern terminal emulator** with good Unicode/color support, such as:
+  - **Ghostty**
+  - **iTerm2**
+  - **WezTerm**
+  - **kitty**
+  - **Alacritty**
+  - **Windows Terminal**
+  - **GNOME Terminal**
+  - **Konsole**
+- a **[Nerd Font](https://www.nerdfonts.com)** enabled in that terminal
+
+SSH is fine too — what matters is the terminal on the **client machine**.
+
+---
+
+## Quick start
+
+### 1. Configure your `Client.txt`
+
+**Linux**
 ```sh
-go test ./...
-go build ./cmd/poe2campain
-```
-
-Or use the helper script (outputs to `dist/`):
-
-```sh
-./build.sh
-```
-
-### Running on each platform
-
-Build produces a single static binary. Place it alongside the `data/` directory.
-
-**Linux:**
-
-```sh
-go build -ldflags='-s -w' -trimpath -o poe2campain ./cmd/poe2campain
 ./poe2campain config set-client ~/.steam/steam/steamapps/common/'Path of Exile 2'/logs/Client.txt
-./poe2campain
 ```
 
-**macOS:**
-
+**macOS**
 ```sh
-go build -ldflags='-s -w' -trimpath -o poe2campain ./cmd/poe2campain
 ./poe2campain config set-client ~/Library/Application\ Support/Steam/steamapps/common/'Path of Exile 2'/logs/Client.txt
+```
+
+**Windows (PowerShell)**
+```powershell
+.\poe2campain config set-client 'C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt'
+```
+
+### 2. Launch it
+
+**Linux / macOS**
+```sh
 ./poe2campain
 ```
 
-**Windows (PowerShell):**
-
+**Windows (PowerShell)**
 ```powershell
-go build -ldflags='-s -w' -trimpath -o poe2campain.exe ./cmd/poe2campain
-.\poe2campain config set-client 'C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt'
-.\poe2campain
+.\poe2campain.exe
 ```
 
-Default `Client.txt` paths per OS:
+If no `Client.txt` is configured yet, the app will tell you what command to run.
 
-| OS      | Default path                                                                                          |
-|---------|-------------------------------------------------------------------------------------------------------|
-| Linux   | `~/.steam/steam/steamapps/common/Path of Exile 2/logs/Client.txt`                                   |
-| macOS   | `~/Library/Application Support/Steam/steamapps/common/Path of Exile 2/logs/Client.txt`               |
+---
+
+## Default `Client.txt` paths
+
+| OS | Path |
+|---|---|
+| Linux | `~/.steam/steam/steamapps/common/Path of Exile 2/logs/Client.txt` |
+| macOS | `~/Library/Application Support/Steam/steamapps/common/Path of Exile 2/logs/Client.txt` |
 | Windows | `C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt` |
 
-## Current CLI
+---
 
-Regenerate the normalized offline runtime data:
-
-```sh
-go run ./cmd/poe2campain update-data
-```
-
-Validate the normalized data:
-
-```sh
-go run ./cmd/poe2campain validate-data
-```
-
-List known zone IDs:
-
-```sh
-go run ./cmd/poe2campain --list-zones
-```
-
-Inspect guide state for a generated area ID or zone:
-
-```sh
-go run ./cmd/poe2campain --debug-zone G1_13_2
-```
-
-Configure your `Client.txt` path:
-
-```sh
-go run ./cmd/poe2campain config set-client '/path/to/Path of Exile 2/logs/Client.txt'
-go run ./cmd/poe2campain config show
-```
-
-The default config path is:
-
-```sh
-go run ./cmd/poe2campain config path
-```
-
-A local `config.json` is gitignored if you want to use `--config config.json` during development.
-
-The user config intentionally only stores user-specific settings like `client_txt`. The bundled campaign data is found automatically from the working directory during development or next to the executable in release builds. `--data` remains available as a developer override.
-
-Scan `Client.txt` once and show the latest detected area:
-
-```sh
-go run ./cmd/poe2campain --debug-client
-```
-
-Run the live terminal UI:
-
-```sh
-go run ./cmd/poe2campain
-```
-
-Live mode watches `Client.txt` and follows the ordered route from `data/campaign.normalized.json`. Area detection can move the guide forward to the next matching route entry, but it does not rewind automatically. It saves the current route/step plus manually completed steps under your user state directory.
-
-Progress state commands:
-
-```sh
-go run ./cmd/poe2campain state path
-go run ./cmd/poe2campain state show
-go run ./cmd/poe2campain state reset
-```
+## Controls
 
 ```text
 ↑/k    step up       ←  zone back
@@ -161,19 +117,60 @@ h      toggle help
 q      quit
 ```
 
-You can still override the config from the command line:
+Behavior notes:
 
+- area detection only moves the guide **forward**
+- the current route, step, and manually completed steps are saved between runs
+- if you miss a step in-game, fix it manually
+
+---
+
+## Useful commands
+
+### Show config path
 ```sh
-go run ./cmd/poe2campain --debug-client --client '/path/to/Path of Exile 2/logs/Client.txt'
+./poe2campain config path
 ```
 
-Act 4 follows the imported route order like the rest of the campaign.
+### Show current config
+```sh
+./poe2campain config show
+```
 
-## Window manager rules
+### Inspect saved state
+```sh
+./poe2campain state show
+```
 
-Pin poe2campain as a small floating overlay alongside the game.
+### Reset saved state
+```sh
+./poe2campain state reset
+```
+
+### Debug latest detected area from `Client.txt`
+```sh
+./poe2campain --debug-client
+```
+
+### Inspect a specific zone or generated area ID
+```sh
+./poe2campain --debug-zone G1_13_2
+```
+
+### List all known zones
+```sh
+./poe2campain --list-zones
+```
+
+---
+
+## Floating terminal setup
+
+`poe2campain` works especially well in a small pinned terminal beside the game.
 
 ### Niri (Wayland)
+
+Based on your Ghostty setup:
 
 ```kdl
 window-rule {
@@ -186,8 +183,6 @@ window-rule {
 }
 ```
 
-Adjust `x`, `y`, width, and height for your monitor. Replace `com.mitchellh.ghostty` with your terminal's app-id if you don't use Ghostty.
-
 ### Hyprland (Wayland)
 
 ```ini
@@ -197,10 +192,77 @@ windowrulev2 = size 620 140, class:^(ghostty)$, title:^(poe2campain)$
 windowrulev2 = opacity 0.7, class:^(ghostty)$, title:^(poe2campain)$
 ```
 
-Replace `ghostty` with your terminal's class if different (`wezterm`, `Alacritty`, etc.).
+If you use another terminal, swap the app-id/class accordingly.
+
+---
+
+## Build from source
+
+Only needed if you want to build it yourself.
+
+### Requirements
+
+- **Go 1.25+**
+
+### Build
+
+```sh
+go test ./...
+go build ./cmd/poe2campain
+```
+
+Or use the helper script:
+
+```sh
+./build.sh
+```
+
+---
+
+## Data pipeline
+
+Runtime guide data is bundled in:
+
+- `data/campaign.normalized.json`
+
+Source snapshots live in:
+
+- `data/sources/`
+
+### Source roles
+
+**Primary guide text source**
+- `domistae/poe2-leveling`
+
+**Area ID matching source**
+- `Lailloken/Exile-UI`
+
+Domistae provides the human-readable campaign route and step text.
+Exile-UI is used for area IDs and zone matching against `Client.txt`.
+
+---
+
+## Philosophy
+
+`poe2campain` is deliberately narrow in scope.
+
+It will:
+- read `Client.txt`
+- match zones
+- render campaign guidance
+- save lightweight progress state
+
+It will **not**:
+- read memory
+- inject into the game
+- automate inputs
+- run as an overlay
+- depend on Electron or AHK
+
+---
 
 ## Credits
 
-- [Lailloken/Exile-UI](https://github.com/Lailloken/Exile-UI) — area IDs and zone names (MIT)
-- [domistae/poe2-leveling](https://github.com/domistae/poe2-leveling) — campaign guide text (MIT)
-- Original fork: [wiiittttt/poecampain](https://github.com/wiiittttt/poecampain)
+- [domistae/poe2-leveling](https://github.com/domistae/poe2-leveling) — campaign guide text
+- [Lailloken/Exile-UI](https://github.com/Lailloken/Exile-UI) — area IDs and zone names
+- Original fork inspiration: [wiiittttt/poecampain](https://github.com/wiiittttt/poecampain)
