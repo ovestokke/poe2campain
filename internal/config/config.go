@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const AppName = "poe2campain"
@@ -74,4 +75,58 @@ func Exists(path string) bool {
 	}
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// DefaultClientPaths returns platform-specific candidate paths for Client.txt.
+// Paths are deduplicated (after tilde expansion) and returned with ~ preserved for display.
+func DefaultClientPaths() []string {
+	return deduplicatePaths(defaultClientPaths())
+}
+
+func deduplicatePaths(paths []string) []string {
+	seen := make(map[string]bool, len(paths))
+	out := make([]string, 0, len(paths))
+	for _, p := range paths {
+		expanded := expandTilde(p)
+		if !seen[expanded] {
+			seen[expanded] = true
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// DefaultPathDisplay returns DefaultPath with ~ replacing the home directory for help text.
+func DefaultPathDisplay() string {
+	p := DefaultPath()
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return p
+	}
+	if strings.HasPrefix(p, home) {
+		return "~" + p[len(home):]
+	}
+	return p
+}
+
+// FindClientTxt returns the first existing Client.txt from DefaultClientPaths, or "".
+func FindClientTxt() string {
+	for _, p := range DefaultClientPaths() {
+		expanded := expandTilde(p)
+		if _, err := os.Stat(expanded); err == nil {
+			return expanded
+		}
+	}
+	return ""
+}
+
+func expandTilde(path string) string {
+	if !strings.HasPrefix(path, "~/") {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return path
+	}
+	return filepath.Join(home, path[2:])
 }

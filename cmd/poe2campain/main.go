@@ -30,6 +30,9 @@ func main() {
 
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "help", "--help", "-h":
+			printUsage()
+			return
 		case "update-data", "generate-data":
 			updateData(os.Args[2:])
 			return
@@ -46,6 +49,23 @@ func main() {
 	}
 
 	run(os.Args[1:])
+}
+
+func printUsage() {
+	fmt.Println(`Usage: poe2campain [command] [flags]
+Commands:
+  help              show this help
+  update-data       regenerate normalized campaign data from sources
+  validate-data     validate campaign data
+  config            manage config (path, show, init, set-client)
+  state             manage session state (path, show, reset)
+Flags:
+  -client string    Path of Exile 2 Client.txt path (auto-detected if empty)
+  -config string    config file path (default ` + appconfig.DefaultPathDisplay() + `)
+  -data string      normalized campaign data path (default "` + defaultDataPath + `")
+  -debug-client     scan Client.txt and show the latest matched area
+  -debug-zone string  match and render route entry for a zone or area ID
+  -list-zones       list known zones`)
 }
 
 func updateData(args []string) {
@@ -78,12 +98,14 @@ func validateData(args []string) {
 }
 
 func configCommand(args []string) {
-	if len(args) == 0 {
-		fmt.Println("usage:")
-		fmt.Println("  poe2campain config path")
-		fmt.Println("  poe2campain config show [--config path]")
-		fmt.Println("  poe2campain config init [--config path] [--client path] [--force]")
-		fmt.Println("  poe2campain config set-client [--config path] /path/to/Client.txt")
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
+		fmt.Println("Usage: poe2campain config <subcommand>")
+		fmt.Println("")
+		fmt.Println("Subcommands:")
+		fmt.Println("  path                  show config file path")
+		fmt.Println("  show [--config path]  show current config")
+		fmt.Println("  init [--config path] [--client path] [--force]  create config")
+		fmt.Println("  set-client [--config path] /path/to/Client.txt  set Client.txt path")
 		return
 	}
 
@@ -138,11 +160,13 @@ func configCommand(args []string) {
 }
 
 func stateCommand(args []string) {
-	if len(args) == 0 {
-		fmt.Println("usage:")
-		fmt.Println("  poe2campain state path")
-		fmt.Println("  poe2campain state show")
-		fmt.Println("  poe2campain state reset")
+	if len(args) == 0 || args[0] == "--help" || args[0] == "-h" {
+		fmt.Println("Usage: poe2campain state <subcommand>")
+		fmt.Println("")
+		fmt.Println("Subcommands:")
+		fmt.Println("  path   show state file path")
+		fmt.Println("  show   show current state")
+		fmt.Println("  reset  delete state file")
 		return
 	}
 	path := appconfig.DefaultStatePath()
@@ -171,12 +195,12 @@ func stateCommand(args []string) {
 
 func run(args []string) {
 	fs := flag.NewFlagSet("poe2campain", flag.ExitOnError)
-	configPath := fs.String("config", appconfig.DefaultPath(), "config file path")
+	configPath := fs.String("config", "", "config file path (default "+appconfig.DefaultPathDisplay()+")")
 	dataPath := fs.String("data", resolveDefaultDataPath(), "normalized campaign data path")
 	listZones := fs.Bool("list-zones", false, "list known zones")
 	debugZone := fs.String("debug-zone", "", "match and render route entry for a zone or generated area ID")
 	debugClient := fs.Bool("debug-client", false, "scan Client.txt and show the latest matched area")
-	clientPath := fs.String("client", "", "Path of Exile 2 Client.txt path")
+	clientPath := fs.String("client", "", "Path of Exile 2 Client.txt path (auto-detected from Steam/standalone install if empty)")
 	_ = fs.Parse(args)
 
 	cfg, _, err := appconfig.Load(*configPath)
@@ -185,6 +209,9 @@ func run(args []string) {
 	}
 	if *clientPath == "" {
 		*clientPath = cfg.ClientPath
+	}
+	if *clientPath == "" {
+		*clientPath = appconfig.FindClientTxt()
 	}
 
 	data, _, err := campaign.Load(*dataPath)
@@ -219,8 +246,15 @@ func run(args []string) {
 		if command == "" {
 			command = "poe2campain"
 		}
-		fmt.Println("No Client.txt configured.")
+		fmt.Println("No Client.txt found.")
+		fmt.Println("")
+		fmt.Println("Checked default locations:")
+		for _, p := range appconfig.DefaultClientPaths() {
+			fmt.Printf("  - %s\n", p)
+		}
+		fmt.Println("")
 		fmt.Printf("Set it with: %s config set-client /path/to/Client.txt\n", command)
+		fmt.Printf("  or use:    %s --client /path/to/Client.txt\n", command)
 		fmt.Println("Config file:", *configPath)
 		return
 	}
