@@ -215,8 +215,12 @@ func run(args []string) {
 		return
 	}
 	if *clientPath == "" {
+		command := os.Args[0]
+		if command == "" {
+			command = "poe2campain"
+		}
 		fmt.Println("No Client.txt configured.")
-		fmt.Println("Set it with: poe2campain config set-client /path/to/Client.txt")
+		fmt.Printf("Set it with: %s config set-client /path/to/Client.txt\n", command)
 		fmt.Println("Config file:", *configPath)
 		return
 	}
@@ -237,7 +241,6 @@ type guideModel struct {
 	statePath string
 	status    string
 	showHelp  bool
-	started   bool
 	quitting  bool
 	err       error
 }
@@ -271,6 +274,9 @@ func runUI(data *campaign.CampaignData, clientPath string) error {
 	} else if found {
 		s.OnAreaDetected(event.AreaID)
 		status = fmt.Sprintf("latest area: level %d %s", event.Level, event.AreaID)
+	}
+	if s.State().Route == nil {
+		s.Start()
 	}
 
 	_, err := tea.NewProgram(guideModel{
@@ -325,9 +331,6 @@ func (m guideModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showHelp = !m.showHelp
 			return m, nil
 		case "space", " ":
-			if !m.started {
-				m.started = true
-			}
 			before := m.session.State()
 			if after, ok := m.session.ToggleCurrentStepDoneAdvance(); ok {
 				status := "marked step done"
@@ -340,44 +343,26 @@ func (m guideModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case "up", "k":
-			if !m.started {
-				m.started = true
-			}
 			m.session.PrevStep()
 			setAndSave("previous step")
 			return m, nil
 		case "down", "j":
-			if !m.started {
-				m.started = true
-			}
 			m.session.NextStep()
 			setAndSave("next step")
 			return m, nil
 		case "left":
-			if !m.started {
-				m.started = true
-			}
 			m.session.PrevRoute()
 			setAndSave("previous route")
 			return m, nil
 		case "right":
-			if !m.started {
-				m.started = true
-			}
 			m.session.NextRoute()
 			setAndSave("next route")
 			return m, nil
 		case "home":
-			if !m.started {
-				m.started = true
-			}
 			m.session.Start()
 			setAndSave("start")
 			return m, nil
 		case "end":
-			if !m.started {
-				m.started = true
-			}
 			m.session.End()
 			setAndSave("end")
 			return m, nil
@@ -396,10 +381,6 @@ func (m guideModel) View() tea.View {
 
 	if m.showHelp {
 		return tea.NewView(renderHelp())
-	}
-
-	if !m.started {
-		return tea.NewView(renderWelcome())
 	}
 
 	v := tea.NewView(renderState(m.session.State(), true))
@@ -446,10 +427,6 @@ var (
 	activeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#a6e3a1")).Bold(true)
 	doneStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#9399b2"))
 )
-
-func renderWelcome() string {
-	return "\n  poe2campain\n\n  press any arrow or j/k to start\n  space mark done  h help  q quit\n"
-}
 
 func renderHelp() string {
 	return "\n  poe2campain\n\n  ↑/k    step up\n  ↓/j    step down\n  ←      zone back\n  →      zone forward\n  space  toggle done\n  h      close help\n  q      quit\n"
