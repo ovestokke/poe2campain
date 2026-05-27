@@ -39,14 +39,6 @@ jobs:
             goarch: arm64
             archive: tar.gz
             ext: ""
-          - goos: darwin
-            goarch: amd64
-            archive: tar.gz
-            ext: ""
-          - goos: darwin
-            goarch: arm64
-            archive: tar.gz
-            ext: ""
           - goos: windows
             goarch: amd64
             archive: zip

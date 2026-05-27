@@ -37,7 +37,6 @@ Each release archive already includes:
 ### Supported release targets
 
 - Linux `amd64`, `arm64`
-- macOS `amd64`, `arm64`
 - Windows `amd64`, `arm64`
 
 ---
@@ -63,7 +62,7 @@ For the UI to render properly, use:
 
 ### 1. Launch it
 
-**Linux / macOS**
+**Linux**
 ```sh
 ./poe2campain
 ```

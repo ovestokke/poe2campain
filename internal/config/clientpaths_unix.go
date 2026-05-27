@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// defaultClientPaths returns Linux/macOS candidate paths for Client.txt.
+// defaultClientPaths returns Linux candidate paths for Client.txt.
 // Includes static paths and dynamic paths discovered from Steam's libraryfolders.vdf.
 func defaultClientPaths() []string {
 	paths := []string{
