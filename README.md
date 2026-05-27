@@ -16,6 +16,7 @@ Most PoE helpers either try to live on top of the game or depend on heavier inte
 
 - follows your campaign route from `Client.txt`
 - works offline from bundled campaign data
+- auto-detects `Client.txt` from Steam (including secondary library drives)
 - lets you move manually when auto-detection is wrong
 - keeps your progress between sessions
 - fits nicely in a small floating terminal window
@@ -60,24 +61,7 @@ For the UI to render properly, use:
 
 ## Quick start
 
-### 1. Configure your `Client.txt`
-
-**Linux**
-```sh
-./poe2campain config set-client ~/.steam/steam/steamapps/common/'Path of Exile 2'/logs/Client.txt
-```
-
-**macOS**
-```sh
-./poe2campain config set-client ~/Library/Application\ Support/Steam/steamapps/common/'Path of Exile 2'/logs/Client.txt
-```
-
-**Windows (PowerShell)**
-```powershell
-.\poe2campain config set-client 'C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt'
-```
-
-### 2. Launch it
+### 1. Launch it
 
 **Linux / macOS**
 ```sh
@@ -89,17 +73,37 @@ For the UI to render properly, use:
 .\poe2campain.exe
 ```
 
-If no `Client.txt` is configured yet, the app will tell you what command to run.
+That's it. `Client.txt` is auto-detected from standard Steam and standalone install paths, including secondary Steam library drives. Progress is saved automatically between sessions.
+
+### 2. (Optional) Set a custom `Client.txt` path
+
+If auto-detection doesn't find your install, configure it manually:
+
+```sh
+./poe2campain config set-client /path/to/Client.txt
+```
+
+Or pass it directly:
+
+```sh
+./poe2campain --client /path/to/Client.txt
+```
 
 ---
 
-## Default `Client.txt` paths
+## Auto-detection
 
-| OS | Path |
-|---|---|
-| Linux | `~/.steam/steam/steamapps/common/Path of Exile 2/logs/Client.txt` |
-| macOS | `~/Library/Application Support/Steam/steamapps/common/Path of Exile 2/logs/Client.txt` |
-| Windows | `C:\Program Files (x86)\Steam\steamapps\common\Path of Exile 2\logs\Client.txt` |
+On startup, `poe2campain` looks for `Client.txt` in this order:
+
+1. **`--client` flag** — explicit path
+2. **Config file** — set via `config set-client`
+3. **Default paths** — checked automatically:
+   - `~/.steam/steam/steamapps/common/Path of Exile 2/logs/Client.txt`
+   - `~/.local/share/Steam/steamapps/common/Path of Exile 2/logs/Client.txt`
+   - `~/Path of Exile 2/logs/Client.txt` (standalone)
+   - All paths discovered from Steam's `libraryfolders.vdf` (secondary drives)
+
+The first existing file is used. If nothing is found, you'll see which paths were checked and how to configure one manually.
 
 ---
 
@@ -121,41 +125,56 @@ Behavior notes:
 
 ---
 
-## Useful commands
+## Commands
 
-### Show config path
+### Main (TUI mode)
+
 ```sh
-./poe2campain config path
+./poe2campain [--client path] [--config path] [--data path]
 ```
 
-### Show current config
-```sh
-./poe2campain config show
+Flags:
+```
+  -client string    Path of Exile 2 Client.txt path (auto-detected if empty)
+  -config string    config file path (default ~/.config/poe2campain/config.json)
+  -data string      normalized campaign data path (default "data/campaign.normalized.json")
+  -debug-client     scan Client.txt and show the latest matched area
+  -debug-zone string  match and render route entry for a zone or area ID
+  -list-zones       list known zones
 ```
 
-### Inspect saved state
+### Config
+
 ```sh
-./poe2campain state show
+./poe2campain config path                  # show config file path
+./poe2campain config show                  # show current config
+./poe2campain config init [--client path]  # create config
+./poe2campain config set-client /path      # set Client.txt path
 ```
 
-### Reset saved state
+### State
+
 ```sh
-./poe2campain state reset
+./poe2campain state path   # show state file path
+./poe2campain state show   # show current state
+./poe2campain state reset  # delete state file
 ```
 
-### Debug latest detected area from `Client.txt`
+### Data
+
 ```sh
-./poe2campain --debug-client
+./poe2campain update-data    # regenerate normalized data from sources
+./poe2campain validate-data  # validate campaign data
 ```
 
-### Inspect a specific zone or generated area ID
-```sh
-./poe2campain --debug-zone G1_13_2
-```
+### Help
 
-### List all known zones
 ```sh
-./poe2campain --list-zones
+./poe2campain --help
+./poe2campain help
+./poe2campain -h
+./poe2campain config --help
+./poe2campain state --help
 ```
 
 ---
