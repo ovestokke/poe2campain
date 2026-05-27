@@ -203,14 +203,16 @@ Only needed if you want to build it yourself.
 ### Build
 
 ```sh
+mkdir -p .build
 go test ./...
-go build ./cmd/poe2campain
+go build -o .build/poe2campain ./cmd/poe2campain
 ```
 
-Or use the helper script:
+Or use the helper script, which writes a runnable local bundle to `.build/`:
 
 ```sh
 ./build.sh
+./.build/poe2campain
 ```
 
 ---

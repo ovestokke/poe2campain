@@ -1,4 +1,5 @@
 dist/
+.build/
 config.json
 /poe2campain
 /poe2campain.exe
