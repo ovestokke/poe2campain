@@ -113,6 +113,91 @@ func TestSessionSnapshotRestore(t *testing.T) {
 	}
 }
 
+func TestSessionToggleCurrentStepDoneAndRestore(t *testing.T) {
+	data := testData()
+	s := New(data)
+	state, ok := s.SelectRouteOrder(20)
+	if !ok || state.Route == nil {
+		t.Fatalf("expected selected route, got ok=%v state=%+v", ok, state)
+	}
+
+	state, ok = s.ToggleCurrentStepDone()
+	if !ok {
+		t.Fatal("expected toggle to succeed")
+	}
+	if !state.CompletedStepIndexes[0] {
+		t.Fatalf("expected first step to be completed, got %+v", state.CompletedStepIndexes)
+	}
+
+	_, _ = s.NextStep()
+	state, ok = s.ToggleCurrentStepDone()
+	if !ok {
+		t.Fatal("expected second toggle to succeed")
+	}
+	if !state.CompletedStepIndexes[1] {
+		t.Fatalf("expected second step to be completed, got %+v", state.CompletedStepIndexes)
+	}
+
+	restored := New(data)
+	state = restored.Restore(s.Snapshot())
+	if !state.CompletedStepIndexes[0] || !state.CompletedStepIndexes[1] {
+		t.Fatalf("expected completed steps after restore, got %+v", state.CompletedStepIndexes)
+	}
+
+	state, ok = restored.ToggleCurrentStepDone()
+	if !ok {
+		t.Fatal("expected untoggle to succeed")
+	}
+	if state.CompletedStepIndexes[1] {
+		t.Fatalf("expected current step to be cleared, got %+v", state.CompletedStepIndexes)
+	}
+	if !state.CompletedStepIndexes[0] {
+		t.Fatalf("expected first step to remain completed, got %+v", state.CompletedStepIndexes)
+	}
+}
+
+func TestSessionToggleCurrentStepDoneAdvance(t *testing.T) {
+	data := testData()
+	s := New(data)
+	state, ok := s.SelectRouteOrder(20)
+	if !ok || state.Step == nil || state.Step.Text != "first" {
+		t.Fatalf("expected first step, got ok=%v state=%+v", ok, state)
+	}
+
+	state, ok = s.ToggleCurrentStepDoneAdvance()
+	if !ok {
+		t.Fatal("expected mark-and-advance to succeed")
+	}
+	if !state.CompletedStepIndexes[0] {
+		t.Fatalf("expected first step done, got %+v", state.CompletedStepIndexes)
+	}
+	if state.Step == nil || state.Step.Text != "second" {
+		t.Fatalf("expected auto-advance to second step, got %+v", state.Step)
+	}
+
+	state, ok = s.ToggleCurrentStepDoneAdvance()
+	if !ok {
+		t.Fatal("expected second mark-and-advance to succeed")
+	}
+	if !state.CompletedStepIndexes[1] {
+		t.Fatalf("expected second step done, got %+v", state.CompletedStepIndexes)
+	}
+	if state.Step == nil || state.Step.Text != "second" {
+		t.Fatalf("expected to stay on last step, got %+v", state.Step)
+	}
+
+	state, ok = s.ToggleCurrentStepDoneAdvance()
+	if !ok {
+		t.Fatal("expected undo on done step to succeed")
+	}
+	if state.CompletedStepIndexes[1] {
+		t.Fatalf("expected undo to clear current step, got %+v", state.CompletedStepIndexes)
+	}
+	if state.Step == nil || state.Step.Text != "second" {
+		t.Fatalf("expected undo to stay on same step, got %+v", state.Step)
+	}
+}
+
 func testData() *campaign.CampaignData {
 	return &campaign.CampaignData{
 		Zones: []campaign.Zone{

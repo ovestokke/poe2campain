@@ -143,7 +143,7 @@ Run the live terminal UI:
 go run ./cmd/poe2campain
 ```
 
-Live mode watches `Client.txt` and follows the ordered route from `data/campaign.normalized.json`. Area detection can move the guide forward to the next matching route entry, but it does not rewind automatically. It saves the current route/step under your user state directory.
+Live mode watches `Client.txt` and follows the ordered route from `data/campaign.normalized.json`. Area detection can move the guide forward to the next matching route entry, but it does not rewind automatically. It saves the current route/step plus manually completed steps under your user state directory.
 
 Progress state commands:
 
@@ -154,10 +154,11 @@ go run ./cmd/poe2campain state reset
 ```
 
 ```text
-↑/k  step up       ←  zone back
-↓/j  step down      →  zone forward
-h    toggle help
-q    quit
+↑/k    step up       ←  zone back
+↓/j    step down      →  zone forward
+space  done + next / undo
+h      toggle help
+q      quit
 ```
 
 You can still override the config from the command line:

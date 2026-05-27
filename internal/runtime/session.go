@@ -1,6 +1,8 @@
 package runtime
 
 import (
+	"sort"
+	"strconv"
 	"strings"
 
 	"poe2campain/internal/campaign"
@@ -11,36 +13,40 @@ import (
 // Client.txt detection may move the cursor forward to the next matching route
 // entry, but never invents quest completion or rewinds automatically.
 type Session struct {
-	data              *campaign.CampaignData
-	matcher           matcher.Matcher
-	zoneIndexByID     map[string]int
-	currentRouteIndex int
-	currentStepIndex  int
-	lastDetectedArea  string
+	data                 *campaign.CampaignData
+	matcher              matcher.Matcher
+	zoneIndexByID        map[string]int
+	currentRouteIndex    int
+	currentStepIndex     int
+	lastDetectedArea     string
+	completedStepByRoute map[int]map[int]bool
 }
 
 type State struct {
-	Zone             *campaign.Zone
-	Route            *campaign.RouteEntry
-	Step             *campaign.Step
-	RouteIndex       int
-	StepIndex        int
-	RouteCandidates  []int
-	LastDetectedArea string
+	Zone                 *campaign.Zone
+	Route                *campaign.RouteEntry
+	Step                 *campaign.Step
+	RouteIndex           int
+	StepIndex            int
+	RouteCandidates      []int
+	LastDetectedArea     string
+	CompletedStepIndexes map[int]bool
 }
 
 type Snapshot struct {
-	CurrentRouteOrder int `json:"current_route_order,omitempty"`
-	CurrentStepIndex  int `json:"current_step_index"`
+	CurrentRouteOrder int              `json:"current_route_order,omitempty"`
+	CurrentStepIndex  int              `json:"current_step_index"`
+	CompletedSteps    map[string][]int `json:"completed_steps,omitempty"`
 }
 
 func New(data *campaign.CampaignData) *Session {
 	s := &Session{
-		data:              data,
-		matcher:           matcher.New(data),
-		zoneIndexByID:     map[string]int{},
-		currentRouteIndex: -1,
-		currentStepIndex:  -1,
+		data:                 data,
+		matcher:              matcher.New(data),
+		zoneIndexByID:        map[string]int{},
+		currentRouteIndex:    -1,
+		currentStepIndex:     -1,
+		completedStepByRoute: map[int]map[int]bool{},
 	}
 	for i, zone := range data.Zones {
 		s.zoneIndexByID[strings.ToLower(zone.ID)] = i
@@ -51,10 +57,56 @@ func New(data *campaign.CampaignData) *Session {
 func (s *Session) Data() *campaign.CampaignData { return s.data }
 
 func (s *Session) Snapshot() Snapshot {
-	return Snapshot{CurrentRouteOrder: s.routeOrder(s.currentRouteIndex), CurrentStepIndex: s.currentStepIndex}
+	snapshot := Snapshot{CurrentRouteOrder: s.routeOrder(s.currentRouteIndex), CurrentStepIndex: s.currentStepIndex}
+	if len(s.completedStepByRoute) == 0 {
+		return snapshot
+	}
+	snapshot.CompletedSteps = map[string][]int{}
+	for routeOrder, completed := range s.completedStepByRoute {
+		if routeOrder <= 0 || len(completed) == 0 {
+			continue
+		}
+		stepIndexes := make([]int, 0, len(completed))
+		for stepIndex, done := range completed {
+			if done {
+				stepIndexes = append(stepIndexes, stepIndex)
+			}
+		}
+		if len(stepIndexes) == 0 {
+			continue
+		}
+		sort.Ints(stepIndexes)
+		snapshot.CompletedSteps[strconv.Itoa(routeOrder)] = stepIndexes
+	}
+	if len(snapshot.CompletedSteps) == 0 {
+		snapshot.CompletedSteps = nil
+	}
+	return snapshot
 }
 
 func (s *Session) Restore(snapshot Snapshot) State {
+	s.completedStepByRoute = map[int]map[int]bool{}
+	for routeOrderText, stepIndexes := range snapshot.CompletedSteps {
+		routeOrder, err := strconv.Atoi(routeOrderText)
+		if err != nil || routeOrder <= 0 {
+			continue
+		}
+		routeIndex := s.routeIndexByOrder(routeOrder)
+		if routeIndex < 0 {
+			continue
+		}
+		stepsInRoute := len(s.data.Route[routeIndex].Steps)
+		for _, stepIndex := range stepIndexes {
+			if stepIndex < 0 || stepIndex >= stepsInRoute {
+				continue
+			}
+			if s.completedStepByRoute[routeOrder] == nil {
+				s.completedStepByRoute[routeOrder] = map[int]bool{}
+			}
+			s.completedStepByRoute[routeOrder][stepIndex] = true
+		}
+	}
+
 	s.currentRouteIndex = s.routeIndexByOrder(snapshot.CurrentRouteOrder)
 	if s.currentRouteIndex >= 0 {
 		s.currentStepIndex = clampStep(snapshot.CurrentStepIndex, len(s.data.Route[s.currentRouteIndex].Steps))
@@ -117,11 +169,51 @@ func (s *Session) State() State {
 		state.Route = &s.data.Route[s.currentRouteIndex]
 		state.Zone = s.zoneByID(state.Route.ZoneID)
 		state.RouteCandidates = matcher.RouteIndexesForZoneID(s.data, state.Route.ZoneID)
+		state.CompletedStepIndexes = copyCompletedSteps(s.completedStepByRoute[state.Route.Order])
 		if s.currentStepIndex >= 0 && s.currentStepIndex < len(state.Route.Steps) {
 			state.Step = &state.Route.Steps[s.currentStepIndex]
 		}
 	}
 	return state
+}
+
+func (s *Session) ToggleCurrentStepDone() (State, bool) {
+	route := s.currentRoute()
+	if route == nil || s.currentStepIndex < 0 || s.currentStepIndex >= len(route.Steps) {
+		return s.State(), false
+	}
+	if s.completedStepByRoute[route.Order] == nil {
+		s.completedStepByRoute[route.Order] = map[int]bool{}
+	}
+	if s.completedStepByRoute[route.Order][s.currentStepIndex] {
+		delete(s.completedStepByRoute[route.Order], s.currentStepIndex)
+		if len(s.completedStepByRoute[route.Order]) == 0 {
+			delete(s.completedStepByRoute, route.Order)
+		}
+	} else {
+		s.completedStepByRoute[route.Order][s.currentStepIndex] = true
+	}
+	return s.State(), true
+}
+
+func (s *Session) ToggleCurrentStepDoneAdvance() (State, bool) {
+	route := s.currentRoute()
+	if route == nil || s.currentStepIndex < 0 || s.currentStepIndex >= len(route.Steps) {
+		return s.State(), false
+	}
+
+	wasDone := s.completedStepByRoute[route.Order] != nil && s.completedStepByRoute[route.Order][s.currentStepIndex]
+	state, ok := s.ToggleCurrentStepDone()
+	if !ok {
+		return state, false
+	}
+	if wasDone {
+		return state, true
+	}
+	if _, ok := s.NextStep(); ok {
+		return s.State(), true
+	}
+	return state, true
 }
 
 func (s *Session) NextStep() (State, bool) {
@@ -222,6 +314,22 @@ func (s *Session) routeIndexByOrder(order int) int {
 		}
 	}
 	return -1
+}
+
+func copyCompletedSteps(src map[int]bool) map[int]bool {
+	if len(src) == 0 {
+		return nil
+	}
+	out := make(map[int]bool, len(src))
+	for stepIndex, done := range src {
+		if done {
+			out[stepIndex] = true
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func clampStep(step, steps int) int {
