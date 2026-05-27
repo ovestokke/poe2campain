@@ -231,7 +231,7 @@ func run(args []string) {
 		if !ok {
 			log.Fatalf("no zone match for %q", *debugZone)
 		}
-		fmt.Print(renderState(state, false))
+		fmt.Print(renderState(state, false, 0))
 		return
 	}
 	if *debugClient {
@@ -274,6 +274,7 @@ type guideModel struct {
 	cancel    context.CancelFunc
 	statePath string
 	status    string
+	width     int
 	showHelp  bool
 	quitting  bool
 	err       error
@@ -354,6 +355,9 @@ func (m guideModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case errMsg:
 		m.err = msg
 		return m, nil
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -417,7 +421,7 @@ func (m guideModel) View() tea.View {
 		return tea.NewView(renderHelp())
 	}
 
-	v := tea.NewView(renderState(m.session.State(), true))
+	v := tea.NewView(renderState(m.session.State(), true, m.width-1))
 	v.AltScreen = true
 	return v
 }
@@ -450,7 +454,7 @@ func debugClientLog(data *campaign.CampaignData, clientPath string) {
 		log.Fatalf("no zone match for %q", event.AreaID)
 	}
 	fmt.Printf("Latest Client.txt area: level %d area %s\n", event.Level, event.AreaID)
-	fmt.Print(renderState(state, false))
+	fmt.Print(renderState(state, false, 0))
 }
 
 var (
@@ -466,7 +470,7 @@ func renderHelp() string {
 	return "\n  poe2campain\n\n  ↑/k    step up\n  ↓/j    step down\n  ←      zone back\n  →      zone forward\n  space  toggle done\n  h      close help\n  q      quit\n"
 }
 
-func renderState(state appsession.State, useStyle bool) string {
+func renderState(state appsession.State, useStyle bool, width int) string {
 	if state.Route == nil {
 		return "Waiting for area...\n"
 	}
@@ -496,28 +500,36 @@ func renderState(state appsession.State, useStyle bool) string {
 			prefix += "✓ "
 		}
 
-		line := prefix + step.Text
+		text := step.Text
 		if step.Optional {
-			line += " " + muted("(optional)", useStyle)
+			text += " (optional)"
 		}
 
-		switch {
-		case i == state.StepIndex && useStyle:
-			line = activeStyle.Render(line)
-		case done && useStyle:
-			line = doneStyle.Render(line)
+		for j, part := range wrapStepText(text, width-lipgloss.Width(prefix)) {
+			linePrefix := prefix
+			if j > 0 {
+				linePrefix = strings.Repeat(" ", lipgloss.Width(prefix))
+			}
+			line := linePrefix + part
+
+			switch {
+			case i == state.StepIndex && useStyle:
+				line = activeStyle.Render(line)
+			case done && useStyle:
+				line = doneStyle.Render(line)
+			}
+			b.WriteString(line)
+			b.WriteString("\n")
 		}
-		b.WriteString(line)
-		b.WriteString("\n")
 	}
 	return b.String()
 }
 
-func muted(s string, useStyle bool) string {
-	if !useStyle {
-		return s
+func wrapStepText(text string, width int) []string {
+	if width <= 0 {
+		return []string{text}
 	}
-	return mutedStyle.Render(s)
+	return strings.Split(lipgloss.Wrap(text, width, " "), "\n")
 }
 
 func loadSessionSnapshot(path string) (appsession.Snapshot, bool, error) {
