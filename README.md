@@ -33,8 +33,6 @@ Each release archive already includes:
 - the `poe2campain` binary
 - the bundled `data/` directory
 
-**You do not need Go installed to run release builds.**
-
 ### Supported release targets
 
 - Linux `amd64`, `arm64`
